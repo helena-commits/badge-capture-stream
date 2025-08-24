@@ -1,12 +1,23 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Settings } from "lucide-react";
+import CapturePhoto from "@/components/CapturePhoto";
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="relative">
+      {/* Admin access button */}
+      <div className="absolute top-4 right-4 z-10">
+        <Link to="/lista">
+          <Button variant="outline" size="sm">
+            <Settings className="w-4 h-4 mr-2" />
+            Área de Gestão
+          </Button>
+        </Link>
       </div>
+      
+      {/* Main capture interface */}
+      <CapturePhoto />
     </div>
   );
 };
