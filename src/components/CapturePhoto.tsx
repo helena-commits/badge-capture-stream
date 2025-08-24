@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const CapturePhoto = () => {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [capturedFile, setCapturedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -17,6 +18,7 @@ const CapturePhoto = () => {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      setCapturedFile(file);
       const reader = new FileReader();
       reader.onload = (e) => {
         setCapturedImage(e.target?.result as string);
@@ -26,7 +28,7 @@ const CapturePhoto = () => {
   };
 
   const handleSave = async () => {
-    if (!capturedImage || !fileInputRef.current?.files?.[0]) {
+    if (!capturedImage || !capturedFile) {
       toast({
         title: "Erro",
         description: "Nenhuma foto foi capturada",
@@ -38,13 +40,12 @@ const CapturePhoto = () => {
     setIsUploading(true);
     
     try {
-      const file = fileInputRef.current.files[0];
-      const fileName = `photo_${Date.now()}.${file.type.split('/')[1]}`;
+      const fileName = `photo_${Date.now()}.${capturedFile.type.split('/')[1]}`;
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('photos')
-        .upload(fileName, file, {
+        .upload(fileName, capturedFile, {
           cacheControl: '3600',
           upsert: false
         });
@@ -79,6 +80,7 @@ const CapturePhoto = () => {
 
       // Reset for next photo
       setCapturedImage(null);
+      setCapturedFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -97,6 +99,7 @@ const CapturePhoto = () => {
 
   const handleRetake = () => {
     setCapturedImage(null);
+    setCapturedFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
