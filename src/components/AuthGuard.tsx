@@ -11,11 +11,12 @@ interface AuthGuardProps {
 }
 
 // Simple password protection - for production, use proper Supabase auth
-const ADMIN_PASSWORD = "crachás2024";
+const LIST_PASSWORD = "Bern2025#";
+const PASSWORD = import.meta.env.VITE_LIST_PASSWORD || LIST_PASSWORD;
 
 const AuthGuard = ({ children }: AuthGuardProps) => {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return sessionStorage.getItem('badge-admin-auth') === 'true';
+    return sessionStorage.getItem('list_auth_ok') === '1';
   });
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -28,9 +29,9 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
     // Simulate auth delay
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    if (password === ADMIN_PASSWORD) {
+    if (password.trim() === PASSWORD) {
       setIsAuthenticated(true);
-      sessionStorage.setItem('badge-admin-auth', 'true');
+      sessionStorage.setItem('list_auth_ok', '1');
       toast({
         title: "Acesso autorizado",
         description: "Bem-vindo à área de gestão",
@@ -38,7 +39,7 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
     } else {
       toast({
         title: "Erro de autenticação",
-        description: "Palavra-passe incorreta",
+        description: "Senha incorreta",
         variant: "destructive",
       });
     }

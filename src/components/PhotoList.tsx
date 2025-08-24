@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Download, Check, RefreshCw, Image as ImageIcon, ExternalLink, Copy, Search, Volume2 } from "lucide-react";
+import { Download, Check, RefreshCw, Image as ImageIcon, ExternalLink, Copy, Search, Volume2, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,11 @@ const PhotoList = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const BADGES_URL = import.meta.env.VITE_BADGES_URL || 'https://growing-badges.lovable.app';
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('list_auth_ok');
+    window.location.reload();
+  };
 
   const fetchPhotos = useCallback(async (filterType: FilterType = filter) => {
     try {
@@ -293,15 +298,27 @@ const PhotoList = () => {
             </p>
           </div>
           
-          <Button
-            onClick={() => fetchPhotos()}
-            variant="outline"
-            size="lg"
-            className="h-12"
-          >
-            <RefreshCw className="w-5 h-5 mr-2" />
-            Atualizar
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => fetchPhotos()}
+              variant="outline"
+              size="lg"
+              className="h-12"
+            >
+              <RefreshCw className="w-5 h-5 mr-2" />
+              Atualizar
+            </Button>
+            
+            <Button
+              onClick={handleLogout}
+              variant="secondary"
+              size="lg"
+              className="h-12"
+            >
+              <LogOut className="w-5 h-5 mr-2" />
+              Sair
+            </Button>
+          </div>
         </div>
 
         {/* Search and Filters */}
