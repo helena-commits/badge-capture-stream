@@ -65,6 +65,7 @@ const CapturePhoto = () => {
         .insert([
           {
             file_url: publicUrl,
+            file_path: fileName,
           }
         ]);
 

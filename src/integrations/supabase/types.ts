@@ -17,18 +17,21 @@ export type Database = {
       photos: {
         Row: {
           created_at: string
+          file_path: string | null
           file_url: string
           id: string
           processed: boolean
         }
         Insert: {
           created_at?: string
+          file_path?: string | null
           file_url: string
           id?: string
           processed?: boolean
         }
         Update: {
           created_at?: string
+          file_path?: string | null
           file_url?: string
           id?: string
           processed?: boolean
