@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import { Download, Check, RefreshCw, Image as ImageIcon, ExternalLink, Copy, Search, Volume2, LogOut } from "lucide-react";
+import { Download, Check, RefreshCw, Image as ImageIcon, ExternalLink, Copy, Search, Volume2, LogOut, Settings, Play, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -18,14 +19,148 @@ interface Photo {
 
 type FilterType = 'pending' | 'processed' | 'all';
 
+// Module-level variables for auto-open functionality
+let generatorWin: Window | null = null;
+let lastAutoOpenTime = 0;
+
 const PhotoList = () => {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<FilterType>('pending');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Auto-open state management
+  const [autoOpenGenerator, setAutoOpenGenerator] = useState(() => {
+    return localStorage.getItem('autoOpenGenerator') === 'true';
+  });
+  const [isArmed, setIsArmed] = useState(() => {
+    return sessionStorage.getItem('generatorArmed') === 'true';
+  });
 
   const BADGES_URL = import.meta.env.VITE_BADGES_URL || 'https://growing-badges.lovable.app';
+
+  // Auto-open utility functions
+  const getBadgeUrl = async (photo: Photo): Promise<string> => {
+    const photoUrl = await getPhotoUrl(photo);
+    const encodedUrl = encodeURIComponent(photoUrl);
+    return `${BADGES_URL}/?photo=${encodedUrl}`;
+  };
+
+  const getOpenedPhotosSet = (): Set<string> => {
+    const stored = sessionStorage.getItem('openedPhotos');
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  };
+
+  const markPhotoAsOpened = (photoId: string) => {
+    const openedPhotos = getOpenedPhotosSet();
+    openedPhotos.add(photoId);
+    sessionStorage.setItem('openedPhotos', JSON.stringify([...openedPhotos]));
+  };
+
+  const handleAutoOpenToggle = (checked: boolean) => {
+    setAutoOpenGenerator(checked);
+    localStorage.setItem('autoOpenGenerator', checked.toString());
+    
+    if (!checked) {
+      // When disabling, also disarm and clear session data
+      setIsArmed(false);
+      sessionStorage.removeItem('generatorArmed');
+      generatorWin = null;
+    }
+  };
+
+  const armAutoOpen = () => {
+    try {
+      generatorWin = window.open('about:blank', '_blank');
+      if (generatorWin) {
+        setIsArmed(true);
+        sessionStorage.setItem('generatorArmed', 'true');
+        toast({
+          title: "Auto-abrir armado",
+          description: "Próximas fotos abrirão automaticamente no gerador",
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Não foi possível abrir aba. Verifique se pop-ups estão permitidos.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao armar auto-abertura",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const disarmAutoOpen = () => {
+    setIsArmed(false);
+    sessionStorage.removeItem('generatorArmed');
+    if (generatorWin && !generatorWin.closed) {
+      generatorWin.close();
+    }
+    generatorWin = null;
+    toast({
+      title: "Auto-abrir desarmado",
+      description: "As próximas fotos não abrirão automaticamente",
+    });
+  };
+
+  const autoOpenBadgeGenerator = async (photo: Photo) => {
+    // Rate limiting: minimum 2 seconds between auto-opens
+    const now = Date.now();
+    if (now - lastAutoOpenTime < 2000) {
+      console.log('Rate limiting: skipping auto-open due to recent activity');
+      return;
+    }
+
+    // Check if this photo was already opened in this session
+    const openedPhotos = getOpenedPhotosSet();
+    if (openedPhotos.has(photo.id)) {
+      console.log('Photo already auto-opened in this session:', photo.id);
+      return;
+    }
+
+    try {
+      const badgeUrl = await getBadgeUrl(photo);
+      
+      if (generatorWin && !generatorWin.closed) {
+        // Use existing armed window
+        generatorWin.location.href = badgeUrl;
+        generatorWin.focus();
+      } else {
+        // Fallback to new window
+        const newWin = window.open(badgeUrl, '_blank');
+        if (!newWin) {
+          toast({
+            title: "Bloqueio de pop-up",
+            description: "Não foi possível abrir automaticamente. Clique no botão para abrir manualmente.",
+            variant: "destructive",
+          });
+          return;
+        }
+        generatorWin = newWin;
+      }
+      
+      markPhotoAsOpened(photo.id);
+      lastAutoOpenTime = now;
+      
+      toast({
+        title: "📋 Gerador aberto automaticamente",
+        description: "Nova foto carregada no gerador de crachás",
+      });
+    } catch (error) {
+      console.error('Error in auto-open:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível abrir automaticamente. Clique no botão.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleLogout = () => {
     sessionStorage.removeItem('list_auth_ok');
@@ -246,7 +381,7 @@ const PhotoList = () => {
           schema: 'public',
           table: 'photos'
         },
-        (payload) => {
+        async (payload) => {
           const newPhoto = payload.new as Photo;
           setPhotos(prev => [newPhoto, ...prev]);
           
@@ -256,6 +391,11 @@ const PhotoList = () => {
             title: "📸 Nova foto recebida!",
             description: `Foto criada em ${formatDate(newPhoto.created_at)}`,
           });
+
+          // Auto-open badge generator if enabled and conditions are met
+          if (autoOpenGenerator && !newPhoto.processed && isArmed) {
+            await autoOpenBadgeGenerator(newPhoto);
+          }
         }
       )
       .subscribe();
@@ -338,6 +478,65 @@ const PhotoList = () => {
               <span>Som ativo para novas fotos</span>
             </div>
           </div>
+
+          {/* Auto-open Controls */}
+          <Card className="p-4 bg-muted/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Settings className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      checked={autoOpenGenerator}
+                      onCheckedChange={handleAutoOpenToggle}
+                      id="auto-open"
+                    />
+                    <label htmlFor="auto-open" className="text-sm font-medium cursor-pointer">
+                      Auto-abrir gerador
+                    </label>
+                    {autoOpenGenerator && isArmed && (
+                      <Badge variant="default" className="ml-2">
+                        AUTO
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {autoOpenGenerator 
+                      ? (isArmed 
+                          ? "Próximas fotos abrirão automaticamente no gerador" 
+                          : "Clique em 'Armar' para ativar abertura automática"
+                        )
+                      : "Desativado - fotos não abrirão automaticamente"
+                    }
+                  </p>
+                </div>
+              </div>
+              
+              {autoOpenGenerator && (
+                <div className="flex gap-2">
+                  {!isArmed ? (
+                    <Button
+                      onClick={armAutoOpen}
+                      variant="default"
+                      size="sm"
+                    >
+                      <Play className="w-4 h-4 mr-1" />
+                      Armar auto-abrir
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={disarmAutoOpen}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      <Square className="w-4 h-4 mr-1" />
+                      Parar
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
 
           <Tabs value={filter} onValueChange={(value) => setFilter(value as FilterType)}>
             <TabsList className="grid w-full max-w-md grid-cols-3">
