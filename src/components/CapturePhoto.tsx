@@ -2,6 +2,8 @@ import { useState, useRef } from "react";
 import { Camera, Check, RotateCcw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -9,6 +11,8 @@ const CapturePhoto = () => {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [name, setName] = useState("");
+  const [role, setRole] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleTakePhoto = () => {
@@ -32,6 +36,15 @@ const CapturePhoto = () => {
       toast({
         title: "Erro",
         description: "Nenhuma foto foi capturada",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!name.trim() || !role.trim()) {
+      toast({
+        title: "Erro",
+        description: "Nome e função são obrigatórios",
         variant: "destructive",
       });
       return;
@@ -66,6 +79,8 @@ const CapturePhoto = () => {
           {
             file_url: publicUrl,
             file_path: fileName,
+            name: name.trim(),
+            role: role.trim(),
           }
         ]);
 
@@ -82,6 +97,8 @@ const CapturePhoto = () => {
       // Reset for next photo
       setCapturedImage(null);
       setCapturedFile(null);
+      setName("");
+      setRole("");
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -120,29 +137,56 @@ const CapturePhoto = () => {
           </div>
 
           {!capturedImage ? (
-            <div className="text-center">
-              <div className="mb-8">
-                <Camera className="w-24 h-24 mx-auto text-primary mb-4" />
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nome</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Digite o nome"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="h-12"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Função</Label>
+                  <Input
+                    id="role"
+                    type="text"
+                    placeholder="Digite a função"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                    className="h-12"
+                  />
+                </div>
               </div>
               
-              <Button
-                onClick={handleTakePhoto}
-                size="lg"
-                variant="tablet"
-                className="w-full h-24 text-xl"
-              >
-                <Camera className="w-8 h-8 mr-3" />
-                Tirar Foto
-              </Button>
-              
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={handleFileChange}
-              />
+              <div className="text-center">
+                <div className="mb-8">
+                  <Camera className="w-24 h-24 mx-auto text-primary mb-4" />
+                </div>
+                
+                <Button
+                  onClick={handleTakePhoto}
+                  size="lg"
+                  variant="tablet"
+                  className="w-full h-24 text-xl"
+                >
+                  <Camera className="w-8 h-8 mr-3" />
+                  Tirar Foto
+                </Button>
+                
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+              </div>
             </div>
           ) : (
             <div className="space-y-6">

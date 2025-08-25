@@ -15,6 +15,8 @@ interface Photo {
   file_path?: string;
   created_at: string;
   processed: boolean;
+  name?: string;
+  role?: string;
 }
 
 type FilterType = 'pending' | 'processed' | 'all';
@@ -43,8 +45,11 @@ const PhotoList = () => {
   // Auto-open utility functions
   const getBadgeUrl = async (photo: Photo): Promise<string> => {
     const photoUrl = await getPhotoUrl(photo);
-    const encodedUrl = encodeURIComponent(photoUrl);
-    return `${BADGES_URL}/?photo=${encodedUrl}`;
+    const params = new URLSearchParams();
+    params.append('photo', photoUrl);
+    if (photo.name) params.append('name', photo.name);
+    if (photo.role) params.append('role', photo.role);
+    return `${BADGES_URL}/?${params.toString()}`;
   };
 
   const getOpenedPhotosSet = (): Set<string> => {
@@ -227,8 +232,11 @@ const PhotoList = () => {
   const handleOpenInBadgeGenerator = async (photo: Photo) => {
     try {
       const photoUrl = await getPhotoUrl(photo);
-      const encodedUrl = encodeURIComponent(photoUrl);
-      const badgeUrl = `${BADGES_URL}/?photo=${encodedUrl}`;
+      const params = new URLSearchParams();
+      params.append('photo', photoUrl);
+      if (photo.name) params.append('name', photo.name);
+      if (photo.role) params.append('role', photo.role);
+      const badgeUrl = `${BADGES_URL}/?${params.toString()}`;
       window.open(badgeUrl, '_blank');
     } catch (error) {
       console.error('Error opening badge generator:', error);
@@ -590,7 +598,23 @@ const PhotoList = () => {
                             <Badge variant={photo.processed ? "default" : "secondary"}>
                               {photo.processed ? "Processada" : "Pendente"}
                             </Badge>
+                            {autoOpenGenerator && !photo.processed && isArmed && (
+                              <Badge variant="default" className="ml-1">
+                                AUTO
+                              </Badge>
+                            )}
                           </div>
+                          
+                          {(photo.name || photo.role) && (
+                            <div className="text-sm space-y-1">
+                              {photo.name && (
+                                <div className="font-medium text-foreground">{photo.name}</div>
+                              )}
+                              {photo.role && (
+                                <div className="text-muted-foreground">{photo.role}</div>
+                              )}
+                            </div>
+                          )}
                           
                           <div className="text-xs text-muted-foreground">
                             ID: {photo.id.slice(-8)}

@@ -20,21 +20,27 @@ export type Database = {
           file_path: string | null
           file_url: string
           id: string
+          name: string | null
           processed: boolean
+          role: string | null
         }
         Insert: {
           created_at?: string
           file_path?: string | null
           file_url: string
           id?: string
+          name?: string | null
           processed?: boolean
+          role?: string | null
         }
         Update: {
           created_at?: string
           file_path?: string | null
           file_url?: string
           id?: string
+          name?: string | null
           processed?: boolean
+          role?: string | null
         }
         Relationships: []
       }
